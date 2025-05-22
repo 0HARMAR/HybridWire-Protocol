@@ -1,5 +1,12 @@
+#include <memory>
+#include <vector>
+#include <string>
 #include <boost/asio.hpp>
-#include "hybridwire.hpp"
+#include "../include/hybridwire.hpp"
+
+namespace HybridWire {
+    struct SessionHeader;
+}
 
 using namespace boost::asio;
 using namespace HybridWire;
@@ -23,22 +30,21 @@ private:
     }
 
     void handle_connection(std::shared_ptr<ip::tcp::socket> socket) {
-        auto buffer = std::make_shared<std::vector<uint8_t>>(1024);
-        socket->async_read_some(boost::asio::buffer(*buffer),
-                                [this, socket, buffer](boost::system::error_code ec, size_t bytes) {
-                                    if (!ec) {
-                                        ProtocolParser parser;
-                                        auto result = parser.parse(buffer->data(), bytes);
+        auto buffer = std::make_shared<std::string>();
 
-                                        if (result == ProtocolParser::ParseResult::HTTP) {
-                                            // 处理HTTP请求
-                                            send_http_response(socket);
-                                        } else if (result == ProtocolParser::ParseResult::CUSTOM) {
-                                            // 处理自定义协议
-                                            start_session(socket, parser.session_header());
-                                        }
-                                    }
-                                });
+        async_read_until(*socket, dynamic_buffer(*buffer), "\r\n\r\n",
+            [this, socket, buffer](boost::system::error_code ec, size_t bytes) {
+                if (!ec) {
+                    ProtocolParser parser;
+                    auto result = parser.parse(reinterpret_cast<const uint8_t*>(buffer->data()), buffer->size());
+
+                    if (result == ProtocolParser::ParseResult::HTTP) {
+                        send_http_response(socket);
+                    } else {
+                        // 处理其他协议或错误
+                    }
+                }
+            });
     }
 
     void send_http_response(std::shared_ptr<ip::tcp::socket> socket) {

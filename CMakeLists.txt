@@ -3,6 +3,7 @@ project(HybridWireProtocol)
 
 set(CMAKE_CXX_STANDARD 20)
 
-add_executable(HybridWireProtocol src/main.cpp
-        include/hybirdwire.hpp
-        src/server.cpp)
+add_executable(HybridWireProtocol
+        include/hybridwire.hpp
+        src/server.cpp
+        src/hybridwire.cpp)

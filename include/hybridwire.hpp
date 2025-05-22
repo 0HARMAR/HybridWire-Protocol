@@ -2,10 +2,12 @@
 #include <cstdint>
 #include <vector>
 #include <string>
+#include <arpa/inet.h>  // 用于字节序转换
 
 namespace HybridWire {
 
-// 协议头结构（二进制格式）
+#pragma pack(push, 1)
+    // 协议头结构（二进制格式）
     struct ProtocolHeader {
         char magic[4];      // 协议标识 "HWP\0"
         uint32_t head_len;  // 头部长度（网络字节序）
@@ -14,17 +16,18 @@ namespace HybridWire {
         uint16_t reserved;   // 保留字段
     };
 
-// 会话消息头（自定义协议模式）
+    // 会话消息头（自定义协议模式）
     struct SessionHeader {
         uint64_t session_id; // 会话ID
-        uint32_t msg_type;   // 消息类型（0=心跳, 1=数据, 2=认证...）
+        uint32_t msg_type;   // 消息类型
         uint32_t payload_len;// 数据长度
     };
+#pragma pack(pop)
 
-// HTTP模式检测工具
+    // HTTP模式检测工具
     bool is_http_request(const std::vector<uint8_t>& data);
 
-// 协议解析器
+    // 协议解析器
     class ProtocolParser {
     public:
         enum class ParseResult { NEED_MORE, HTTP, CUSTOM, ERROR };
