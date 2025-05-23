@@ -1,0 +1,7 @@
+This is a test file for the HybridWire Protocol.
+It demonstrates the file transfer capabilities of our custom protocol.
+The protocol supports:
+- File transfer
+- Session management
+- Stateful communication
+- Binary data transfer 
