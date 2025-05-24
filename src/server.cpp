@@ -2,14 +2,10 @@
 #include <vector>
 #include <string>
 #include <boost/asio.hpp>
-#include "../include/hybridwire.hpp"
-
-namespace HybridWire {
-    struct SessionHeader;
-}
+#include "../include/hybridwire_protocol.h"
 
 using namespace boost::asio;
-using namespace HybridWire;
+using namespace hybridwire;
 
 class HybridServer {
 public:
@@ -35,13 +31,13 @@ private:
         async_read_until(*socket, dynamic_buffer(*buffer), "\r\n\r\n",
             [this, socket, buffer](boost::system::error_code ec, size_t bytes) {
                 if (!ec) {
-                    ProtocolParser parser;
-                    auto result = parser.parse(reinterpret_cast<const uint8_t*>(buffer->data()), buffer->size());
+                    ProtocolHandler handler;
+                    auto result = handler.parse(reinterpret_cast<const uint8_t*>(buffer->data()), buffer->size());
 
-                    if (result == ProtocolParser::ParseResult::HTTP) {
+                    if (result == ProtocolHandler::ParseResult::HTTP) {
                         send_http_response(socket);
-                    } else {
-                        // 处理其他协议或错误
+                    } else if (result == ProtocolHandler::ParseResult::BINARY) {
+                        handle_binary_protocol(socket, handler);
                     }
                 }
             });
@@ -56,9 +52,11 @@ private:
         async_write(*socket, buffer(response), [socket](auto ec, auto) {});
     }
 
-    void start_session(std::shared_ptr<ip::tcp::socket> socket,
-                       const SessionHeader& header) {
-        // 会话管理逻辑
+    void handle_binary_protocol(std::shared_ptr<ip::tcp::socket> socket,
+                              const ProtocolHandler& handler) {
+        const auto& session_header = handler.get_session_header();
+        // 处理二进制协议消息
+        // TODO: 实现具体的二进制协议处理逻辑
     }
 
     ip::tcp::acceptor acceptor_;

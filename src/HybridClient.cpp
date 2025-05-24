@@ -1,9 +1,9 @@
 #include <iostream>
 #include <boost/asio.hpp>
-#include "../include/hybridwire.hpp"
+#include "../include/hybridwire_protocol.h"
 
 using namespace boost::asio;
-using namespace HybridWire;
+using namespace hybridwire;
 
 class HybridClient {
 public:
@@ -24,16 +24,18 @@ public:
     // 发送HTTP模式的请求
     std::string sendHttpRequest(const std::string& http_request) {
         try {
-            // 创建协议头
-            ProtocolHeader header;
-            memcpy(header.magic, "HWP", 3);
-            header.magic[3] = '\0';
-            header.version = 0x01;
-            header.flags = 0x01;  // HTTP模式
-            header.head_len = htonl(sizeof(ProtocolHeader));
-
+            // 创建基础协议头
+            Message msg;
+            msg.base_header.magic[0] = 'H';
+            msg.base_header.magic[1] = 'W';
+            msg.base_header.magic[2] = 'P';
+            msg.base_header.magic[3] = '\0';
+            msg.base_header.version = PROTOCOL_VERSION;
+            msg.base_header.flags = static_cast<uint8_t>(Flags::HTTP_MODE);
+            msg.base_header.head_len = htons(sizeof(BaseHeader));
+            
             // 发送头部
-            write(socket_, buffer(&header, sizeof(header)));
+            write(socket_, buffer(&msg.base_header, sizeof(BaseHeader)));
             
             // 发送HTTP请求
             write(socket_, buffer(http_request));
@@ -45,6 +47,27 @@ public:
         } catch (std::exception& e) {
             std::cerr << "请求错误: " << e.what() << std::endl;
             return "";
+        }
+    }
+
+    // 发送二进制模式的消息
+    bool sendBinaryMessage(const std::vector<uint8_t>& payload, MessageType type) {
+        try {
+            // 创建完整消息
+            Message msg = ProtocolHandler::create_message(
+                type,
+                0, // 新会话时session_id为0
+                payload,
+                static_cast<uint8_t>(Flags::BINARY_MODE)
+            );
+
+            // 序列化并发送消息
+            std::vector<uint8_t> serialized = ProtocolHandler::serialize_message(msg);
+            write(socket_, buffer(serialized));
+            return true;
+        } catch (std::exception& e) {
+            std::cerr << "发送错误: " << e.what() << std::endl;
+            return false;
         }
     }
 

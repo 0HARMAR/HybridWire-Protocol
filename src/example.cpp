@@ -19,22 +19,26 @@ void demonstrateFileTransfer() {
     file.seekg(0);
 
     // Create a session
-    SessionState session = ProtocolHandler::createSession("client1");
-    FileTransferState transferState = ProtocolHandler::initializeFileTransfer(filename, fileSize);
+    SessionState session = ProtocolHandler::create_session("client1");
+    FileTransferState transferState = ProtocolHandler::initialize_file_transfer(filename, fileSize);
 
     // Send file transfer start message
     std::string metadata = filename + ":" + std::to_string(fileSize);
     std::vector<uint8_t> metadataPayload(metadata.begin(), metadata.end());
     
-    Message startMsg = ProtocolHandler::createMessage(
+    // 组合标志位
+    uint8_t startFlags = static_cast<uint8_t>(Flags::BINARY_MODE) | 
+                        static_cast<uint8_t>(Flags::REQUIRES_ACK);
+    
+    Message startMsg = ProtocolHandler::create_message(
         MessageType::FILE_TRANSFER_START,
         session.session_id,
         metadataPayload,
-        static_cast<uint8_t>(Flags::REQUIRES_ACK)
+        startFlags
     );
 
     // Serialize and send the message (in real implementation, this would go through network)
-    std::vector<uint8_t> serializedStart = ProtocolHandler::serializeMessage(startMsg);
+    std::vector<uint8_t> serializedStart = ProtocolHandler::serialize_message(startMsg);
     std::cout << "Sending file transfer start message (" << serializedStart.size() << " bytes)\n";
 
     // Read and send file chunks
@@ -46,13 +50,14 @@ void demonstrateFileTransfer() {
         buffer.resize(bytesRead);
 
         // Create and send chunk message
-        Message dataMsg = ProtocolHandler::createMessage(
+        Message dataMsg = ProtocolHandler::create_message(
             MessageType::FILE_TRANSFER_DATA,
             session.session_id,
-            buffer
+            buffer,
+            static_cast<uint8_t>(Flags::BINARY_MODE)
         );
 
-        std::vector<uint8_t> serializedData = ProtocolHandler::serializeMessage(dataMsg);
+        std::vector<uint8_t> serializedData = ProtocolHandler::serialize_message(dataMsg);
         std::cout << "Sending file chunk (" << serializedData.size() << " bytes)\n";
 
         transferState.bytes_transferred += bytesRead;
@@ -60,14 +65,17 @@ void demonstrateFileTransfer() {
     }
 
     // Send file transfer end message
-    Message endMsg = ProtocolHandler::createMessage(
+    uint8_t endFlags = static_cast<uint8_t>(Flags::BINARY_MODE) | 
+                      static_cast<uint8_t>(Flags::REQUIRES_ACK);
+    
+    Message endMsg = ProtocolHandler::create_message(
         MessageType::FILE_TRANSFER_END,
         session.session_id,
         std::vector<uint8_t>(),
-        static_cast<uint8_t>(Flags::REQUIRES_ACK)
+        endFlags
     );
 
-    std::vector<uint8_t> serializedEnd = ProtocolHandler::serializeMessage(endMsg);
+    std::vector<uint8_t> serializedEnd = ProtocolHandler::serialize_message(endMsg);
     std::cout << "Sending file transfer end message (" << serializedEnd.size() << " bytes)\n";
     std::cout << "File transfer complete: " << transferState.bytes_transferred 
               << " bytes transferred\n";
