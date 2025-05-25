@@ -1,13 +1,15 @@
 #include <iostream>
 #include <boost/asio.hpp>
-#include "../include/hybridwire_protocol.h"
+#include "../include/hwp.hpp"
 
 using namespace boost::asio;
-using namespace hybridwire;
 
-class HybridClient {
+namespace hwp {
+namespace client {
+
+class Client::Impl {
 public:
-    HybridClient(const std::string& host, unsigned short port)
+    Impl(const std::string& host, unsigned short port)
         : io_(), socket_(io_), endpoint_(ip::address::from_string(host), port) {}
 
     // 连接到服务器
@@ -82,4 +84,29 @@ private:
     io_context io_;
     ip::tcp::socket socket_;
     ip::tcp::endpoint endpoint_;
-}; 
+};
+
+// Client class implementation
+Client::Client(const std::string& host, unsigned short port)
+    : impl_(std::make_unique<Impl>(host, port)) {}
+
+Client::~Client() = default;
+
+bool Client::connect() {
+    return impl_->connect();
+}
+
+std::string Client::sendHttpRequest(const std::string& http_request) {
+    return impl_->sendHttpRequest(http_request);
+}
+
+bool Client::sendBinaryMessage(const std::vector<uint8_t>& payload, MessageType type) {
+    return impl_->sendBinaryMessage(payload, type);
+}
+
+void Client::close() {
+    impl_->close();
+}
+
+} // namespace client
+} // namespace hwp 

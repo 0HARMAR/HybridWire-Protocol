@@ -2,8 +2,18 @@
 #include <iostream>
 #include <fstream>
 #include <string>
+#include <iomanip>
 
 using namespace hybridwire;
+
+// Helper function to print binary data
+void print_hex(const std::vector<uint8_t>& data) {
+    for (uint8_t byte : data) {
+        std::cout << std::hex << std::setw(2) << std::setfill('0') 
+                  << static_cast<int>(byte) << " ";
+    }
+    std::cout << std::dec << std::endl;
+}
 
 // Example of file transfer using the protocol
 void demonstrateFileTransfer() {
@@ -81,6 +91,51 @@ void demonstrateFileTransfer() {
               << " bytes transferred\n";
 }
 
+// Test Wire mode functionality
+void test_wire_mode() {
+    std::cout << "\n=== Testing Wire Mode ===\n" << std::endl;
+
+    // Create a test message
+    std::string test_payload = "Hello, Wire Mode!";
+    std::vector<uint8_t> payload(test_payload.begin(), test_payload.end());
+    
+    // Create a new session
+    auto session = ProtocolHandler::create_session("test_client");
+    std::cout << "Created session with ID: " << session.session_id << std::endl;
+
+    // Create and serialize a message
+    auto msg = ProtocolHandler::create_message(
+        MessageType::MESSAGE,
+        session.session_id,
+        payload
+    );
+
+    std::cout << "Created message with type: " 
+              << static_cast<int>(msg.session_header.msg_type) << std::endl;
+
+    // Serialize the message
+    auto serialized = ProtocolHandler::serialize_message(msg);
+    std::cout << "Serialized message (" << serialized.size() << " bytes):" << std::endl;
+    print_hex(serialized);
+
+    // Deserialize and verify
+    auto deserialized = ProtocolHandler::deserialize_message(serialized);
+    std::string received_payload(deserialized.payload.begin(), deserialized.payload.end());
+    
+    std::cout << "\nDeserialized message:" << std::endl;
+    std::cout << "- Session ID: " << deserialized.session_header.session_id << std::endl;
+    std::cout << "- Message Type: " 
+              << static_cast<int>(deserialized.session_header.msg_type) << std::endl;
+    std::cout << "- Payload: " << received_payload << std::endl;
+
+    // Test file transfer initialization
+    auto file_transfer = ProtocolHandler::initialize_file_transfer("test.txt", 1024);
+    std::cout << "\nInitialized file transfer:" << std::endl;
+    std::cout << "- Filename: " << file_transfer.filename << std::endl;
+    std::cout << "- Total size: " << file_transfer.total_size << " bytes" << std::endl;
+    std::cout << "- Chunk size: " << file_transfer.chunk_size << " bytes" << std::endl;
+}
+
 int main() {
     try {
         demonstrateFileTransfer();
@@ -88,5 +143,6 @@ int main() {
         std::cerr << "Error: " << e.what() << std::endl;
         return 1;
     }
+    test_wire_mode();
     return 0;
 } 

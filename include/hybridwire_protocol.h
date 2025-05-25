@@ -108,6 +108,8 @@ public:
 private:
     static uint64_t generate_session_id();
     static uint64_t get_current_timestamp();
+    static bool validate_base_header(const BaseHeader& header);
+    static void parse_session_header(SessionHeader& session_header, const uint8_t* data);
     
     Message current_message;
     std::string http_data;

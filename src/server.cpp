@@ -2,14 +2,16 @@
 #include <vector>
 #include <string>
 #include <boost/asio.hpp>
-#include "../include/hybridwire_protocol.h"
+#include "../include/hwp.hpp"
 
 using namespace boost::asio;
-using namespace hybridwire;
 
-class HybridServer {
+namespace hwp {
+namespace server {
+
+class Server::Impl {
 public:
-    HybridServer(io_context& io, unsigned short port)
+    Impl(io_context& io, unsigned short port)
             : acceptor_(io, ip::tcp::endpoint(ip::tcp::v4(), port)) {
         start_accept();
     }
@@ -29,7 +31,7 @@ private:
         auto buffer = std::make_shared<std::string>();
 
         async_read_until(*socket, dynamic_buffer(*buffer), "\r\n\r\n",
-            [this, socket, buffer](boost::system::error_code ec, size_t bytes) {
+            [this, socket, buffer](boost::system::error_code ec, size_t /*bytes*/) {
                 if (!ec) {
                     ProtocolHandler handler;
                     auto result = handler.parse(reinterpret_cast<const uint8_t*>(buffer->data()), buffer->size());
@@ -49,22 +51,22 @@ private:
                 "Content-Length: 13\r\n"
                 "\r\n"
                 "Hello, Hybrid!";
-        async_write(*socket, buffer(response), [socket](auto ec, auto) {});
+        async_write(*socket, buffer(response), [socket](boost::system::error_code /*ec*/, size_t /*bytes*/) {});
     }
 
-    void handle_binary_protocol(std::shared_ptr<ip::tcp::socket> socket,
-                              const ProtocolHandler& handler) {
-        const auto& session_header = handler.get_session_header();
-        // 处理二进制协议消息
+    void handle_binary_protocol(std::shared_ptr<ip::tcp::socket> /*socket*/,
+                              const ProtocolHandler& /*handler*/) {
         // TODO: 实现具体的二进制协议处理逻辑
     }
 
     ip::tcp::acceptor acceptor_;
 };
 
-int main() {
-    io_context io;
-    HybridServer server(io, 8080);
-    io.run();
-    return 0;
-}
+// Server class implementation
+Server::Server(io_context& io, unsigned short port)
+    : impl_(std::make_unique<Impl>(io, port)) {}
+
+Server::~Server() = default;
+
+} // namespace server
+} // namespace hwp
